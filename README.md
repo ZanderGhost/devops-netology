@@ -28,9 +28,16 @@
    $ cat /dev/null > /proc/6287/fd/1
 
 
-4. Зомби процессы не являются реальными процессами, это записи в таблице процессов, и это единственный ресурс который они потребляют.
+4. Да, можно
+   
+   [    0.001237] CPU MTRRs all blank - virtualized system.
+   
+   [    0.067803] Booting paravirtualized kernel on KVM
+   
+   [    3.952130] systemd[1]: Detected virtualization oracle.
+   
+   [   27.641916] 04:57:45.685861 main     Executable: /opt/VBoxGuestAdditions-6.1.16/sbin/VBoxService
 
-   Следует обратить внимание на то, что количество записей в таблице процессов ограничено.
 
 
 5.  /sys/fs/cgroup/unified/system.slice/systemd-udevd.service/cgroup.procs
