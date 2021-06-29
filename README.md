@@ -2,31 +2,67 @@
 
 # devops-netology
 
-1. chdir("/tmp")   
+1. unit-файл:
+   
+   [Unit]
 
-2. База данных file находится в файле /usr/share/misc/magic.mgc
+   Description=Prometheus Node Exporter
+
+   Wants=network-online.target
+
+   After=network-online.target
+
+   
+   [Service]
+
+   User=node_exporter
+
+   Group=node_exporter 
+   
+   Type=simple 
+   
+   ExecStart=/usr/local/bin/node_exporter --web.config=/opt/node_exporter/conf.yml
+
+   [Install]
+
+   WantedBy=multi-user.target
+
+   Добавляем в автозагрузку:
+
+  $ sudo systemctl daemon-reload
+  
+  $ sudo systemctl enable --now node_exporter
+
+  Смотрим статус:
+
+  $ sudo systemctl status node_exporter
+
+    ● node_exporter.service - Prometheus Node Exporter
+    
+    Loaded: loaded (/etc/systemd/system/node_exporter.service; enabled; vendor preset: enabled)
+    Active: active (running) since Tue 2021-06-29 00:21:35 UTC; 8min ago
+   
+    Main PID: 24042 (node_exporter)
+      Tasks: 4 (limit: 2281)
+     Memory: 2.2M
+     CGroup: /system.slice/node_exporter.service
+             └─24042 /usr/local/bin/node_exporter --web.config=/opt/node_exporter/conf.yml
 
 
-3. $ cat /dev/urandom >> random
 
-   $ ps aux | grep urandom
+2. Метрики для мониторинга хоста:
+    
+    CPU: node_cpu_seconds_total 
+    
+    RAM: node_memory_MemTotal_bytes, node_memory_MemFree_bytes
 
-   vagrant     6287 34.7  0.0   8220   528 pts/0    T    01:20   0:04 cat /dev/urandom
+    Диск: node_filesystem_avail_bytes
 
-   $ rm random
+    Сетевой трафик: node_network_receive_bytes_total, node_network_transmit_bytes_total
+   
 
-   $ lsof -p 6287 | grep random
 
-   cat     6287 vagrant    1w   REG  253,0 902299648 2883622 /home/vagrant/random (deleted)
-
-   $ ll /proc/6287/fd/1
-
-   l-wx------ 1 vagrant vagrant 64 Jun 18 01:24 /proc/6287/fd/1 -> '/home/vagrant/random (deleted)'
-
-   Обнуляем:
-
-   $ cat /dev/null > /proc/6287/fd/1
-
+3. 
 
 4. Да, можно
    
@@ -40,78 +76,58 @@
 
 
 
-5.  /sys/fs/cgroup/unified/system.slice/systemd-udevd.service/cgroup.procs
-   
-    /sys/fs/cgroup/unified/system.slice/systemd-udevd.service/cgroup.threads
+5.  По умолчанию fs.nr_open = 1048576, данный параметр задает максимально возможное
+    число открытых файловых дескрипторов.
+    Другой лимит - это ограничение ресурсов оболочки.
+    
+    vagrant@vagrant:~$ ulimit -n
+    
+    1024
 
-    /var/run/utmp
+    vagrant@vagrant:~$ ulimit -Hn
 
-    /usr/local/share/dbus-1/system-services
-
-    /usr/share/dbus-1/system-services
-
-    /lib/dbus-1/system-services
-
-    /var/lib/snapd/dbus-1/system-services/
+    1048576
 
 
-6. $ strace uname -a
 
-uname({sysname="Linux", nodename="vagrant", ...}) = 0
+6. root@vagrant:/# unshare -u sleep
 
-fstat(1, {st_mode=S_IFCHR|0620, st_rdev=makedev(0x88, 0), ...}) = 0
+    root@vagrant:/home/vagrant# ps aux | grep sleep
 
-uname({sysname="Linux", nodename="vagrant", ...}) = 0
+    root        1448  0.0  0.0   8080   592 pts/1    S+   07:27   0:00 unshare -f --pid --mount-proc sleep 1h
 
-uname({sysname="Linux", nodename="vagrant", ...}) = 0
+    root        1449  0.0  0.0   8076   580 pts/1    S+   07:27   0:00 sleep 1h
 
-write(1, "Linux vagrant 5.4.0-58-generic #"..., 105Linux vagrant 5.4.0-58-generic #64-Ubuntu SMP Wed Dec 9 08:16:25 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
-) = 105
+    root        1463  0.0  0.0   8900   736 pts/2    S+   07:30   0:00 grep --color=auto sleep
 
+    root@vagrant:/home/vagrant# nsenter --target 1449 --pid --mount
 
-   Строка в man: Part of the utsname information is also accessible via /proc/sys/kernel/{ostype, hostname, osrelease, version, do‐
-       mainname}.
+    root@vagrant:/# ps aux | grep sleep
 
+    root           1  0.0  0.0   8076   580 pts/1    S+   07:27   0:00 sleep 1h
 
-7. ; - оператор разделения команд, т.е. в случае root@netology1:~# test -d /tmp/some_dir; echo Hi
-
-   сначала выполниться test -d /tmp/some_dir затем echo Hi, обе команды выполнятся в любом случае.
-
-    && - управляющий оператор, echo Hi вытолнится только в том случае, если статус выхода 
-    из команды test -d /tmp/some_dir будет 0, т.е. команда выполниться успешно.
-
-    Есть ли смысл использовать в bash &&, если применить set -e? - В скрипте конструкция set -e; test -d /tmp/some_dir; echo Hi
-    приведет к немедленому закрытию скрипта, если не будет найдена требуемая директория, а вот в теринале такая конструкция приведет к немедленому закрытию терминала, так что смысл быть может.  
+    root          12  0.0  0.0   8900   736 pts/2    S+   07:33   0:00 grep --color=auto sleep
 
 
-8.  set -euxo pipefail
 
-    -e - немедленный выход, если команда завершается с не нулевым статусом.
+7. :(){ :|:& };: - это, так называемая, форкбомба -  программа бесконечно создающая свои копии которые в свою очередь порождают свои копии.
+ 
+   Механизм стабилизации: cgroup: fork rejected by pids controller in /user.slice/user-1000.slice/session-4.scope
 
-    -u - Рассматривать неинициализированные переменные как ошибку при подстановке.
+   По умолчанию:
 
-    -x - Печатать комманды и их аргументы помере их выполнения.
+  vagrant@vagrant:~$ cat /sys/fs/cgroup/pids/user.slice/user-1000.slice/pids.max
 
-    -o pipefail - Эта опция устанавливает код выхода из конвейера равным таковому для самой правой команды для выхода с ненулевым статусом или равным нулю, 
-если все команды конвейера завершаются успешно. 
+  5019
 
-   Использовать данный режим в bash имеет смысл по следующим причинам:
+  Можно изменить лимит:
 
-   - параметр -e приведет к немедленному завершению сценария в случае сбоя команды, по умолчанию bash проигнорирует неудачную команду в сценарии и перейдет к следующей строке.
-
-   -o pipefail - bash, обычно, смотрит только на код выхода последней команды конвейера, это приводит к тому, что параметр 
--e может реагировать только на код выхода последней команды конвейера. Опция -o pipefail код выхода из конвейера равным 
-таковому для самой правой команды для выхода с ненулевым статусом или равным нулю, если все команды конвейера завершаются успешно.
-  
-   - параметр -u завершит сценарий если наткнется на неинициализированную переменную.
-
-   - Параметр -x заставляет bash печатать каждую команду перед ее выполнением. Может быть полезно при отладке сценария.
-
+   ulimit -u 100
    
 
-9. Наиболее часто встречающийся статус -   S = 100 спящий процесс, ожидающий завершения сибытия.
 
-  Буквы,  дополнительные к основной заглавной, это устаревцие ключи сортировки. Эти ключи используются опцией BSD O (когда она используется для сортировки).
+
+
 
    
  
