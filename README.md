@@ -17,7 +17,44 @@
 
 
 
-2. При потерях в 1% пропускная способность канала падает в 1000 раз. 
+2. Схема 
+
+   ![Screenshot](/images/schema.png)
+
+   Файлы конфигурации приложены (netology3_keepalived.conf, netology4_keepalived.conf)
+
+   Проверяем:
+      
+         vagrant@netology5:~$ for i in {1..50}; do curl -I -s 172.28.128.200>/dev/null; done
+
+   netology3
+
+   ![Screenshot](/images/screen_netology3.png)
+
+   netoligy1
+
+   ![Screenshot](/images/screen_netology1.png)
+
+   netology2
+
+   ![Screenshot](/images/screen_netology2.png)
+
+   Приостанавливаем netology3:
+
+         (base) ghost@WS13:~/Work/vagrant$ vagrant suspend netology3
+         ==> netology3: Saving VM state and suspending execution...
+   
+   Смотрим netology4:
+
+   ![Screenshot](/images/screen_netology4.png)
+
+   netology1
+
+   ![Screenshot](/images/screen_netology1_2.png)
+
+   netology2:
+
+   ![Screenshot](images/screen_netology2_2.png)
    
 
 
@@ -31,84 +68,6 @@
 
    Размер фрейма повлияет прямопропорцианально, так как от его размера зависит размер полезных данных.
 
-4. 1 Получаем IP по имени сайта:
-     Если домен нигде не закэширован и отсутствует в файле hosts, gethostbyname отправляет запрос к сетевому DNS-серверу.
-     Как правило, это локальный роутер или DNS-сервер интернет-провайдера.
-     Если DNS-сервер находится в той же подсети, то ARP-запрос отправляется этому серверу.
-     Если DNS-сервер находится в другой подсети, то ARP-запрос отправляется на IP-адрес шлюза
-     по умолчанию (default gateway). 
-      
-   ARP-запрос:
-   
-         Sender MAC: interface:mac:address:here
-         Sender IP: interface.ip.goes.here
-         Target MAC: FF:FF:FF:FF:FF:FF (Broadcast)
-         Target IP: target.ip.goes.here
-   
-   ARP-ответ:
-
-         Sender MAC: target:mac:address:here
-         Sender IP: target.ip.goes.here
-         Target MAC: interface:mac:address:here
-         Target IP: interface.ip.goes.here
-   Теперь у сетевой библиотеки есть IP-адрес либо DNS-сервера либо шлюза по умолчанию, 
-   который можно использовать для разрешения доменного имени.
-   
-   - Если локальный или на стороне провайдера DNS-сервер «не знает» нужный адрес, то запрашивается рекурсивный поиск, 
-   который проходит по списку вышестоящих DNS-серверов:
-   
-   - Запрос на корневой ДНС  -> редирект на ru
-
-   - Запрос на ru -> редрект на netology
-
-   - запрос на netology -> возврат IP
-   
-   2 Запрос на установку соединения к хосту по порту 80 (SYN)
-
-   3 Открытие и подтверждение соединения (SYN, ACK)
-
-   4 Запрос URL у сервера (ACK + HTTP) 
-
-   5 Возвращается ответ (ACK + HTTP HEAD)
-
-   6 Подтверждаем получения (ACK)
-
-   7 Отправляется запрос на закрытие соединения (FIN)
-
-   8 Подтверждение закрытия (FIN)
-
-   9 Закрываем соединение.
 
 
 
-5. 5 запросов:
-
-    1 - Запрос к клиентскому ДНС 
-    
-    2 - корневой ДНС 
-    
-    3 - ДНС зоны uk 
-   
-    4 - ДНС зоны co.uk 
-    
-    5 - ДНС зоны google.co.uk
-
-
-
-6. Маска /25(255.255.255.128) 128 адресов - 2 служебных адреса, получаем 126 адресов хостов.
-
-  Маска 255.248.0.0 в двоичном выражении 11111111.11111000.00000000.00000000 -> 3 бита + 8 бит + 8 бит = 19 бит
-
-  2 в степени 19 = 524288 - 2 служебных адреса = 524286 адресов хостов.
-
-
-7.  В подсети /23  510 адресов хостов
-
-    в /24 254 адреса хостов 
-
-   
-8. Разделить получиться
-
-   (131070 + 2)*128 = 16777216 = 2^24
-   
-    маска подсети 255.254.0.0
