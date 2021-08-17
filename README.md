@@ -2,18 +2,11 @@
 
 # devops-netology
 
-1. Максимальный размер окна высчитывается по формуле:
-   
-   Полоса пропускания (бит/сек) * RTT = размер окна в битах, подставляя данные получаем:
+1. В ipvs мы имеем два состояния ActiveConn и InActiveConn.
 
-  1000000000 * 0,3 / 8 = 37500000 байт
-
-  Проверим на калькуляторе:
-
-    Bandwidth-delay Product and buffer size
-    BDP (1000 Mbit/sec, 300.0 ms) = 37.50 MByte
-    required tcp buffer to reach 1000 Mbps with RTT of 300.0 ms >= 36621.1 KByte
-    maximum throughput with a TCP window of 37500 KByte and RTT of 300.0 ms <= 1024.00 Mbit/sec.
+   В ActiveConn отображаются TCP соединения в статусе "Established", в InActiveConn все остальные, включая "Wait".
+    
+   Поэтому, ожидая ответа о завершении TCP-соединения, соединение попадает в статус  InActiveConn.
 
 
 
@@ -58,16 +51,10 @@
    
 
 
-3. Заголовки в байтах: preamble - 7, frame delimiter - 1, Ethernet header - 14, Ethernet trailer - 4,
+3. Если мы используем 3 балансировщика в активном режиме, то оптимально использовать 6 VIP, по два на
+
+   каждый балансировщик, что бы иметь возможноть при падении одного из хостов перекинуть по одному VIP
    
-   IFG – 12, IP header – 20, TCP header – 20.
-
-   Max TCP Payload = (MTU-TCP-IP)/(MTU+preamble+FD+Ethernet header+Ethernet trailer+IFG) = (1500-20-20)/(1500+7+1+14+4+12)=0,949
-
-   Максимальная реальная скорость передачи составит 100*0,949=94,9 Mbit
-
-   Размер фрейма повлияет прямопропорцианально, так как от его размера зависит размер полезных данных.
-
 
 
 
