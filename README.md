@@ -2,58 +2,87 @@
 
 # devops-netology
 
-1. В ipvs мы имеем два состояния ActiveConn и InActiveConn.
+1. Есть скрипт:
 
-   В ActiveConn отображаются TCP соединения в статусе "Established", в InActiveConn все остальные, включая "Wait".
-    
-   Поэтому, ожидая ответа о завершении TCP-соединения, соединение попадает в статус  InActiveConn.
-
-
-
-2. Схема 
-
-   ![Screenshot](/images/schema.png)
-
-   Файлы конфигурации приложены (netology3_keepalived.conf, netology4_keepalived.conf)
-
-   Проверяем:
-      
-         vagrant@netology5:~$ for i in {1..50}; do curl -I -s 172.28.128.200>/dev/null; done
-
-   netology3
-
-   ![Screenshot](/images/screen_netology3.png)
-
-   netoligy1
-
-   ![Screenshot](/images/screen_netology1.png)
-
-   netology2
-
-   ![Screenshot](/images/screen_netology2.png)
-
-   Приостанавливаем netology3:
-
-         (base) ghost@WS13:~/Work/vagrant$ vagrant suspend netology3
-         ==> netology3: Saving VM state and suspending execution...
+         a=1
+         b=2
+         c=a+b
+         d=$a+$b
+         e=$(($a+$b))
    
-   Смотрим netology4:
-
-   ![Screenshot](/images/screen_netology4.png)
-
-   netology1
-
-   ![Screenshot](/images/screen_netology1_2.png)
-
-   netology2:
-
-   ![Screenshot](images/screen_netology2_2.png)
+   -Какие значения переменным c,d,e будут присвоены?
    
+   -Почему?
+
+   Переменной "с"  будет присвоена строка 'a+b', так как в c=a+b ма не вызываем переменную($), а присваиваем переменной "c" строку (неявное определение строки).
+
+   Переменной "d" будет присвоена  строка '1+2', так как 'd' не определенна как целочисленная переменная, 
+   то bash подставит в строку значения переменных 'a' и 'b', '+' воспринимается как строковый символ.
+
+   Переменной "e" будет присвоена сумма значений переменных "a" и "b" т.е. 3 т.к. сначала значения во внутренних скобках
+   будут приведены к целочисленным и будет проведена операция сложения, затем с помощью конструкции $() результат записывается в переменную.
+
+2. 
+
+         while ((1==1))
+         do
+         curl https://localhost:4757
+         if (($? != 0))
+         then
+         date >> curl.log
+         else
+         break
+         fi
+         done
+
+3. 
+
+       #!/usr/bin/env bash
+         
+         ip_list=(192.168.0.1 173.194.222.113 87.250.250.242)
+         
+         for ip_addr in ${ip_list[@]}
+         do
+         a=5
+           while (($a>0))
+           do
+             curl http://$ip_addr:80 /dev/null 2>&1
+             if (($? != 0))
+             then
+             echo "[`date +%F--%H-%M`] Connection failed [$ip_addr]" >> log
+             
+             else
+               echo "[`date +%F--%H-%M`] Connection OK [$ip_addr]" >> log
+               
+             fi 
+             a=$(($a-1))  
+           done
+           
+         done
+
+4. 
+         #!/usr/bin/env bash
+         
+         ip_list=(192.168.0.1 173.194.222.113 87.250.250.242)
+         while ((1==1))
+         do 
+            for ip_addr in ${ip_list[@]}
+            do
+               curl http://$ip_addr:80 /dev/null 2>&1
+               if (($? != 0))
+               then
+                  echo "[`date +%F--%H-%M`] Connection failed [$ip_addr]" >> error
+                  break 2
+               fi
+            done
+         done
+
+  
 
 
-3. Если мы используем 3 балансировщика в активном режиме, то оптимально использовать 6 VIP, по два на
+         
 
-   каждый балансировщик, что бы иметь возможноть при падении одного из хостов перекинуть по одному VIP
+
    
 
 
