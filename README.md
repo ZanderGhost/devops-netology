@@ -113,19 +113,18 @@
             import socket
             import time  
              
-            i = 1
+           
             web_srv = {'drive.google.com':'0.0.0.0', 'mail.google.com':'0.0.0.0', 'google.com':'0.0.0.0'}
            
             
             while 1==1 :  
-              for host in web_srv:
-                ip_addr = socket.gethostbyname(host)
-                if ip_addr != web_srv[host]:
-                  if i==1 :
-                    print('[ERROR] {} IP mistmatch {} {}'.format(host, web_srv[host], ip_addr)
-                  web_srv[host] = ip_addr
+                for host in web_srv:
+                    ip_addr = socket.gethostbyname(host)
+                    if ip_addr != web_srv[host]:
+                        print('[ERROR] {} IP mistmatch {} {}'.format(host, web_srv[host], ip_addr)
+                    web_srv[host] = ip_addr
             
-              time.sleep(3)
+                time.sleep(3)
 
 
    
