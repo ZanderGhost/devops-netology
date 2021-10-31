@@ -2,163 +2,110 @@
 
 # devops-netology
 
-1-2. Ставим Vault, проверяем корректность установки:
+1. Есть скрипт:
 
-         vagrant@netology1:~/cert$ vault status
-         Key             Value
-         ---             -----
-         Seal Type       shamir
-         Initialized     true
-         Sealed          false
-         Total Shares    1
-         Threshold       1
-         Version         1.8.2
-         Storage Type    inmem
-         Cluster Name    vault-cluster-9e261d1c
-         Cluster ID      ba0cb08f-e1b9-d729-36f9-7950a5d1cfe0
-         HA Enabled      false
+         #!/usr/bin/env python3
+         a = 1
+         b = '2'
+         c = a + b
 
-   ![Screenshot](images/screen_UI.png)
-
-
-3. Создаем Root CA и Intermediate CA. 
+   Какое значение будет присвоено переменной c?
    
-         vagrant@netology1:~/cert$ vault secrets enable pki
-         Success! Enabled the pki secrets engine at: pki/
+   Как получить для переменной c значение 12?
+
+   Как получить для переменной c значение 3?
+
+   1. Получим ошибку,т.к. пытаемся сложить целое число и строку
+   2. c = str(a) + b т.е. выполним конкатенацию строк
+   3. c = a + int(b)
 
 
-         vagrant@netology1:~/cert$ vault write -field=certificate pki/root/generate/internal \
-         > common_name="example.com" \
-         > ttl=87600h > CA.crt
-
-
-         vagrant@netology1:~/cert$ vault write pki/config/urls \
-         > issuing_certificates="http://127.0.0.1/v1/pki/ca" \
-         > crl_distribution_points="http://127.0.0.1/v1/pki/crl"
-         Success! Data written to: pki/config/urls
-
-
-   ![Screenshot](images/screen_root_ca.png)
-
-
-         vagrant@netology1:~/cert$ vault secrets enable -path=pki_int pki
-         Success! Enabled the pki secrets engine at: pki_int/
-
-         vagrant@netology1:~/cert$ vault secrets tune -max-lease-ttl=43800h pki_int
-         Success! Tuned the secrets engine at: pki_int/
-
-         vagrant@netology1:~/cert$ vault write -format=json pki_int/intermediate/generate/internal \
-         > common_name="example.com Intermediate Authority" \
-         > | jq -r '.data.csr' > pki_intermediate.csr
-       
-         vagrant@netology1:~/cert$ vault write -format=json pki/root/sign-intermediate csr=@pki_intermediate.csr \
-         > format=pem_bundle ttl="43800h" \
-         > | jq -r '.data.certificate' > intermediate.cert.pem
-
-         vagrant@netology1:~/cert$ vault write pki_int/intermediate/set-signed certificate=@intermediate.cert.pem
-         Success! Data written to: pki_int/intermediate/set-signed
-
-   ![Screenshot](images/screen_int_ca.png)
-
-
-   Создаем роли:
-
-         vagrant@netology1:~/cert$ vault write pki_int/roles/example-dot-com \
-         > allowed_domains="example.com" \
-         > allow_subdomains=true \
-         > max_ttl="720h"
-         Success! Data written to: pki_int/roles/example-dot-com
-
-4.  Запрашиваем сертификат для домена netology.example.com:
-
-         vagrant@netology1:~/cert$ vault write -format=json pki_int/issue/example-dot-com \
-         > common_name="netology.example.com" \
-         > ttl="72h" > netology.example.com.crt
-
-   ![Screenshot](images/screen_privat_ca.png)
-
-   Создаем сертификат для netology.example.com:
-
-         vagrant@netology1:~/cert$ cat netology.example.com.crt | jq -r .data.certificate > netology.example.com.pem
-         vagrant@netology1:~/cert$ cat netology.example.com.crt | jq -r .data.issuing_ca >> netology.example.com.pem
+2. Мы устроились на работу в компанию, где раньше уже был DevOps Engineer. 
+   Он написал скрипт, позволяющий узнать, какие файлы модифицированы в репозитории, 
+   относительно локальных изменений. Этим скриптом недовольно начальство, 
+   потому что в его выводе есть не все изменённые файлы, а также непонятен полный путь к директории, 
+   где они находятся. Как можно доработать скрипт ниже, чтобы он исполнял требования вашего руководителя?
+   
+         #!/usr/bin/env python3
          
-   Создаем ключ для домена netology.example.com:
-
-         vagrant@netology1:~/cert$ cat netology.example.com.crt \
-         >| jq -r .data.private_key > netology.example.com.key
-
-5. Настраиваем nginx, подкидываем сертификат и ключ:
-
-         server {
-                 listen 80 default_server;
-                 listen [::]:80 default_server;
+         import os
          
-                 # SSL configuration
-                 #
-                  listen 443 ssl default_server;
-                  listen [::]:443 ssl default_server;
+         bash_command = ["cd ~/netology/sysadm-homeworks", "git status"]
+         result_os = os.popen(' && '.join(bash_command)).read()
+         is_change = False
+         for result in result_os.split('\n'):
+             if result.find('modified') != -1:
+                 prepare_result = result.replace('\tmodified:   ', '')
+                 print(prepare_result)
+                 break
+
+   Исправленный скрипт
+
+         #!/usr/bin/env python3
          
-                  ssl_certificate /home/vagrant/cert/netology.example.com.pem;
-                  ssl_certificate_key /home/vagrant/cert/netology.example.com.key;
-          
-   Тестируем config:
-
-         vagrant@netology1:~/cert$ sudo nginx -t
-         nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
-         nginx: configuration file /etc/nginx/nginx.conf test is successful
-
-   Перезапускаем nginx:
-
-         vagrant@netology1:~/cert$ sudo systemctl reload nginx
-         vagrant@netology1:~/cert$ sudo systemctl status nginx
-         ● nginx.service - A high performance web server and a reverse proxy server
-              Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
-              Active: active (running) since Tue 2021-09-28 04:52:31 UTC; 19min ago
-                Docs: man:nginx(8)
-             Process: 15597 ExecReload=/usr/sbin/nginx -g daemon on; master_process on; -s reload (code=exited, status=0/SUCCESS)
-            Main PID: 15274 (nginx)
-               Tasks: 2 (limit: 1074)
-              Memory: 5.3M
-              CGroup: /system.slice/nginx.service
-                      ├─15274 nginx: master process /usr/sbin/nginx -g daemon on; master_process on;
-                      └─15598 nginx: worker process
+         import os
          
-         Sep 28 04:52:31 netology1 systemd[1]: Starting A high performance web server and a reverse proxy server...
-         Sep 28 04:52:31 netology1 systemd[1]: Started A high performance web server and a reverse proxy server.
-         Sep 28 05:11:55 netology1 systemd[1]: Reloading A high performance web server and a reverse proxy server.
-         Sep 28 05:11:56 netology1 systemd[1]: Reloaded A high performance web server and a reverse proxy server.
+         git_dir_path = '~/netology/sysadm-homeworks'
+   
+         bash_command = ["cd " + git_dir_path, "git status"]
+         result_os = os.popen(' && '.join(bash_command)).read()
+         #is_change = False - вооще лишняя переменная
+         for result in result_os.split('\n'):
+             if result.find('изменено') != -1: 
+                 prepare_result = result.replace('\tизменено:      ', '')
+                 print('{}'.format(git_dir_path+prepare_result))
+         #        break  - тормозит скрипт на первом найденом изменении.
 
-6. Модифицируем /etc/hosts:
 
-         root@netology1:/home/vagrant/cert# echo 127.0.0.1 netology.example.com  >> /etc/hosts
 
-   Добавляем сертификат Intermediate CA в доверенные:
 
-         ln -s /home/vagrant/cert/intermediate.cert.pem \
-         >/usr/local/share/ca-certificates/intermediate.cert.pem.crt
+3. Доработать скрипт выше так, чтобы он мог проверять не только локальный репозиторий в текущей 
+   директории, а также умел воспринимать путь к репозиторию, который мы передаём как входной параметр. 
+   Мы точно знаем, что начальство коварное и будет проверять работу этого скрипта в директориях, 
+   которые не являются локальными репозиториями.
+   
+         #!/usr/bin/env python3
+         
+         import os
+         import sys
+         
+         def git_command(dir_path):
+             bash_command = ["cd " + dir_path, "git status 2>&1"]
+             result = os.popen(' && '.join(bash_command)).read()
+             return result
+         
+         
+         if __name__ == "__main__":
+             if len(sys.argv) > 1:
+                 result = git_command(sys.argv[1])
+                 for item in result.split('\n'):
+                     if item.find('fatal') != -1:
+                         print('Каталог {} не является Git репозиторием'.format(sys.argv[1]))
+                         break
+                     elif item.find('изменено') != -1:
+                         prepare_result = item.replace('\tизменено:      ', '')
+                         print('{}{}'.format(sys.argv[1], prepare_result)) 
+                             
+             else:
+                 result = git_command(os.getcwd())
+                 for item in result.split('\n'):
+                     if item.find('изменено') != -1:
+                         prepare_result = item.replace('\tизменено:      ', '')
+                         print('{}/{}'.format(os.getcwd(), prepare_result))
+   
 
-   Обновляем сертификаты:
+4. Наша команда разрабатывает несколько веб-сервисов, доступных по http. Мы точно знаем, 
+   что на их стенде нет никакой балансировки, кластеризации, за DNS прячется конкретный IP сервера, 
+   где установлен сервис. Проблема в том, что отдел, занимающийся нашей инфраструктурой очень часто 
+   меняет нам сервера, поэтому IP меняются примерно раз в неделю, при этом сервисы сохраняют за собой 
+   DNS имена. Это бы совсем никого не беспокоило, если бы несколько раз сервера не уезжали в такой 
+   сегмент сети нашей компании, который недоступен для разработчиков. Мы хотим написать скрипт, 
+   который опрашивает веб-сервисы, получает их IP, выводит информацию в стандартный вывод в виде: 
+   <URL сервиса> - <его IP>. Также, должна быть реализована возможность проверки текущего IP сервиса 
+   c его IP из предыдущей проверки. Если проверка будет провалена - оповестить об этом в стандартный 
+   вывод сообщением: [ERROR] <URL сервиса> IP mismatch: <старый IP> <Новый IP>. 
+   Будем считать, что наша разработка реализовала сервисы: drive.google.com, mail.google.com, google.com.
 
-         root@netology1:/home/vagrant/cert# update-ca-certificates
-         Updating certificates in /etc/ssl/certs...
-         1 added, 0 removed; done.
-         Running hooks in /etc/ca-certificates/update.d...
-         done.
-
-   Отправляем тестовый запрос:
-
-         root@netology1:/home/vagrant/cert# curl -I https://netology.example.com
-         HTTP/1.1 200 OK
-         Server: nginx/1.18.0 (Ubuntu)
-         Date: Tue, 28 Sep 2021 05:34:42 GMT
-         Content-Type: text/html
-         Content-Length: 612
-         Last-Modified: Tue, 28 Sep 2021 04:52:29 GMT
-         Connection: keep-alive
-         ETag: "61529f8d-264"
-         Accept-Ranges: bytes
-
-   Все ОК!
 
          
 
